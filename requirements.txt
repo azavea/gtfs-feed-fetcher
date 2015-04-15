@@ -1,4 +1,4 @@
 beautifulsoup4==4.3.2
 pytz==2015.2
 requests==2.6.0
-transitfeed==1.2.14
+transitfeed==1.2.15-blah
