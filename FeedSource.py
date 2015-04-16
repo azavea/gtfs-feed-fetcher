@@ -237,5 +237,5 @@ class FeedSource(object):
             LOG.info('Download completed successfully.')
             return True
         else:
-            LOG.error('Download failed for %s.', download_file)
+            LOG.error('Download failed for %s.', file_name)
         return False
