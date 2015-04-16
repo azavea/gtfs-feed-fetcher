@@ -1,7 +1,12 @@
 """Fetch Delaware First State feed."""
+import logging
+
 from FeedSource import FeedSource
 
 URL = 'http://dartfirststate.com/information/routes/gtfs_data/dartfirststate_de_us.zip'
+
+LOG = logging.getLogger(__name__)
+
 
 class Delaware(FeedSource):
     """Fetch DART feed."""

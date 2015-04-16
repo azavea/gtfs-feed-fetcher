@@ -41,11 +41,11 @@ class Septa(FeedSource):
             if page.ok:
                 soup = BeautifulSoup(page.text)
                 last_mod = soup.find('div', 'col_content').find('p').text
-                LOG.info('SEPTA download last updated %s.', last_mod)
+                LOG.info('SEPTA download page: %s.', last_mod)
                 last_mod = last_mod[14:] # trim out date string
                 if self.timecheck.has_key(DOWNLOAD_FILE_NAME):
                     got_last = self.timecheck.get(DOWNLOAD_FILE_NAME)
-                    if got_last == last_mod:
+                    if got_last >= last_mod:
                         LOG.info('No new download available for SEPTA.')
                         get_septa = False
                     else:
@@ -61,16 +61,19 @@ class Septa(FeedSource):
                 if self.download(DOWNLOAD_FILE_NAME, URL):
                     septa_file = os.path.join(self.ddir, DOWNLOAD_FILE_NAME)
                     if self.extract(septa_file):
-                        self.timecheck[septa_file] = last_mod
-                # delete download file once the two GTFS zips in it are extracted
-                os.remove(septa_file)
+                        self.timecheck[septa_file] = datetime.now().strftime(LAST_UPDATED_FMT)
+                        self.write_timecheck()
+                    # delete download file once the two GTFS zips in it are extracted
+                    os.remove(septa_file)
 
     def extract(self, file_name):
         """Extract bus and rail GTFS files from downloaded zip, then validate each."""
         with zipfile.ZipFile(file_name) as zipped_septa:
             if len(zipped_septa.namelist()) == 2:
                 zipped_septa.extractall(path=self.ddir)
-                if os.path.isfile(BUS_FILE) and os.path.isfile(RAIL_FILE):
+                bus_path = os.path.join(self.ddir, BUS_FILE)
+                rail_path = os.path.join(self.ddir, RAIL_FILE)
+                if os.path.isfile(bus_path) and os.path.isfile(rail_path):
                     rail_good = bus_good = False
                     if self.verify(BUS_FILE):
                         self.new_use.append(BUS_FILE)

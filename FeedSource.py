@@ -20,17 +20,19 @@ class FeedSource(object):
     """Base class for a GTFS source. Class and module names are expected to match.
 
     Subclass this class and:
-        - implement :fetch: method to fetch feeds for the agency.
         - set class :urls: to a dictionary of { filename: url }:
             :filename: is the what the feed will be saved as (should end in .zip)
             :url: is the URL where the feed will be downloaded from
+        - override :fetch: method as necessary to fetch feeds for the agency.
     """
     def __init__(self, ddir=os.path.join(os.getcwd(), 'gtfs')):
+        # set properties
         self._ddir = ddir
         self._urls = None
         self._new_use = []
         self._timecheck = {}
         self._timecheck_file = os.path.join(self.ddir, self.__class__.__name__ + '.p')
+        # load time check file
         self.load_timecheck()
 
     @property
@@ -100,7 +102,7 @@ class FeedSource(object):
                 last_fetch = self.timecheck.get('last_check')
                 LOG.info('Last fetch at: %s', last_fetch)
                 timedelta = datetime.now() - last_fetch
-                LOG.info('Time since last fetched: %s', timedelta)
+                LOG.info('Time since last fetch: %s', timedelta)
         else:
             LOG.debug('Will create new time check file.')
 
@@ -115,10 +117,7 @@ class FeedSource(object):
 
     def fetchone(self, file_name, url, verify=True, **stream):
         """Download and validate a single feed."""
-        LOG.debug('Going to download file %s from URL %s.', file_name, url)
-        download_ok = self.download(file_name, url, **stream)
-        # verify download
-        if download_ok:
+        if self.download(file_name, url, **stream):
             if verify:
                 if self.verify(file_name):
                     LOG.info('GTFS verification succeeded.')
