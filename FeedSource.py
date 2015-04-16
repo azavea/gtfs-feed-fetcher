@@ -20,19 +20,61 @@ class FeedSource(object):
     """Base class for a GTFS source. Class and module names are expected to match.
 
     Subclass this class and:
-        - implement `fetch` method to fetch feeds for the agency.
-        - set class `urls` to a dictionary of { filename: url }:
-            `filename` is the what the feed will be saved as (should end in .zip)
-            `url` is the URL where the feed will be downloaded from
+        - implement :fetch: method to fetch feeds for the agency.
+        - set class :urls: to a dictionary of { filename: url }:
+            :filename: is the what the feed will be saved as (should end in .zip)
+            :url: is the URL where the feed will be downloaded from
     """
     def __init__(self, ddir=os.path.join(os.getcwd(), 'gtfs')):
-        self.ddir = ddir     # directory to download feeds into
-        self.urls = None     # set to a dictionary of { filename: url } for agency
-        self.new_use = []    # list of new feeds successfully downloaded and validated
-        self.timecheck = {}  # time checks for GTFS fetches
-        # default to name pickled timecheck file after class
-        self.timecheck_file = os.path.join(self.ddir, self.__class__.__name__ + '.p')
+        self._ddir = ddir
+        self._urls = None
+        self._new_use = []
+        self._timecheck = {}
+        self._timecheck_file = os.path.join(self.ddir, self.__class__.__name__ + '.p')
         self.load_timecheck()
+
+    @property
+    def ddir(self):
+        """Directory to download feeds into."""
+        return self._ddir
+    @ddir.setter
+    def ddir(self, value):
+        self._ddir = value
+
+    @property
+    def urls(self):
+        """Set to a dictionary of { filename: url } for agency"""
+        return self._urls
+    @urls.setter
+    def urls(self, value):
+        self._urls = value
+
+    @property
+    def new_use(self):
+        """List of new feeds successfully downloaded and validated."""
+        return self._new_use
+    @new_use.setter
+    def new_use(self, value):
+        self._new_use = value
+
+    @property
+    def timecheck(self):
+        """Time checks for GTFS fetches."""
+        return self._timecheck
+    @timecheck.setter
+    def timecheck(self, value):
+        self._timecheck = value
+
+    @property
+    def timecheck_file(self):
+        """Pickle file where time checks are stored.
+
+        Defaults to name file after class, and store it in :ddir:."""
+        return self._timecheck_file
+    @timecheck_file.setter
+    def timecheck_file(self, value):
+        self._timecheck_file = value
+
 
     def fetch(self):
         """Modify this method in sub-class for importing feed(s) from agency.

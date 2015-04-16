@@ -33,7 +33,7 @@ class NJTransit(FeedSource):
         session.post(LOGIN_URL, data=self.nj_payload)
         for filename in self.urls:
             url = self.urls.get(filename)
-            if super(NJTransit, self).fetchone(filename, url, session=session):
-                super(NJTransit, self).write_timecheck()
+            if self.fetchone(filename, url, session=session):
+                self.write_timecheck()
 
         session.close()
