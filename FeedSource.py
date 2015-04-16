@@ -17,9 +17,9 @@ LOG = logging.getLogger(__name__)
 TIMECHECK_FMT = '%a, %d %b %Y %H:%M:%S GMT'
 
 class FeedSource(object):
-    """Base class for a GTFS source.
+    """Base class for a GTFS source. Class and module names are expected to match.
 
-    Inherit this class and:
+    Subclass this class and:
         - implement `fetch` method to fetch feeds for the agency.
         - set class `urls` to a dictionary of { filename: url }:
             `filename` is the what the feed will be saved as (should end in .zip)
@@ -32,7 +32,7 @@ class FeedSource(object):
         self.timecheck = {}  # time checks for GTFS fetches
         # default to name pickled timecheck file after class
         self.timecheck_file = os.path.join(self.ddir, self.__class__.__name__ + '.p')
-        self.__load_timecheck()
+        self.load_timecheck()
 
     def fetch(self):
         """Modify this method in sub-class for importing feed(s) from agency.
@@ -44,9 +44,11 @@ class FeedSource(object):
             for filename in self.urls:
                 url = self.urls.get(filename)
                 if self.fetchone(filename, url):
-                    self.__write_timecheck()
+                    self.write_timecheck()
+        else:
+            LOG.warn('No URLs to download for %s.', self.__class__.__name__)
 
-    def __load_timecheck(self):
+    def load_timecheck(self):
         """Read in pickled log of last times files were downloaded."""
         if os.path.isfile(self.timecheck_file):
             with open(self.timecheck_file, 'rb') as tcf:
@@ -62,7 +64,7 @@ class FeedSource(object):
 
         self.timecheck['last_check'] = datetime.now()
 
-    def __write_timecheck(self):
+    def write_timecheck(self):
         """Write pickled log of last times files were downloaded."""
         LOG.debug('Downloading finished.  Writing time check file %s...', self.timecheck_file)
         with open(self.timecheck_file, 'wb') as tcf:
