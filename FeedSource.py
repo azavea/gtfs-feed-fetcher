@@ -180,17 +180,17 @@ class FeedSource(object):
            return 0 if info missing;
            return -1 if current file is most recent."""
         if self.timecheck.has_key(file_name):
-            last_info = self.timecheck.get(file_name)
+            last_fetch = self.timecheck.get(file_name)
             hdr = requests.head(url)
             hdr = hdr.headers
             if hdr.get('last-modified'):
                 last_mod = hdr.get('last-modified')
-                if last_mod == last_info:
+                if last_fetch >= last_mod:
                     LOG.info('No new download available for %s.', file_name)
                     return -1
                 else:
                     LOG.info('New download available for %s.', file_name)
-                    LOG.info('Last downloaded: %s.', last_info)
+                    LOG.info('Last download from: %s.', last_fetch)
                     LOG.info('New download posted: %s', last_mod)
                     return 1
             else:

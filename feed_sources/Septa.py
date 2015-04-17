@@ -8,7 +8,7 @@ import zipfile
 from bs4 import BeautifulSoup
 import requests
 
-from FeedSource import FeedSource
+from FeedSource import FeedSource, TIMECHECK_FMT
 
 DEVELOPER_URL = 'http://www2.septa.org/developer/'
 URL = DEVELOPER_URL + 'download.php'
@@ -36,15 +36,17 @@ class Septa(FeedSource):
         get_septa = True
         page = requests.get(DEVELOPER_URL)
         LOG.debug('Checking last SEPTA update time...')
-        last_mod = datetime.now().strftime(LAST_UPDATED_FMT)
+        last_mod = datetime.utcnow()
         if page.ok:
             if page.ok:
                 soup = BeautifulSoup(page.text)
                 last_mod = soup.find('div', 'col_content').find('p').text
                 LOG.info('SEPTA download page: %s.', last_mod)
-                last_mod = last_mod[14:] # trim out date string
+                last_mod_str = last_mod[14:]  # trim out date string
+                last_mod = datetime.strptime(last_mod_str, LAST_UPDATED_FMT)  # convert to date
                 if self.timecheck.has_key(DOWNLOAD_FILE_NAME):
-                    got_last = self.timecheck.get(DOWNLOAD_FILE_NAME)
+                    got_last_str = self.timecheck.get(DOWNLOAD_FILE_NAME)
+                    got_last = datetime.strptime(got_last_str, TIMECHECK_FMT)
                     if got_last >= last_mod:
                         LOG.info('No new download available for SEPTA.')
                         get_septa = False
@@ -55,13 +57,13 @@ class Septa(FeedSource):
                 else:
                     LOG.debug('No previous SEPTA download found.')
             else:
-                LOG.debug('failed to get SEPTA dowload info page.')
+                LOG.error('failed to get SEPTA dowload info page.')
 
             if get_septa:
                 if self.download(DOWNLOAD_FILE_NAME, URL):
                     septa_file = os.path.join(self.ddir, DOWNLOAD_FILE_NAME)
                     if self.extract(septa_file):
-                        self.timecheck[septa_file] = datetime.now().strftime(LAST_UPDATED_FMT)
+                        self.timecheck[septa_file] = last_mod.strftime(TIMECHECK_FMT)
                         self.write_timecheck()
                     # delete download file once the two GTFS zips in it are extracted
                     os.remove(septa_file)
