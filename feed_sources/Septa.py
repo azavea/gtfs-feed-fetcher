@@ -42,38 +42,37 @@ class Septa(FeedSource):
         LOG.debug('Checking last SEPTA update time...')
         last_mod = datetime.utcnow()
         if page.ok:
-            if page.ok:
-                soup = BeautifulSoup(page.text)
-                last_mod = soup.find('div', 'col_content').find('p').text
-                LOG.info('SEPTA download page: %s.', last_mod)
-                last_mod_str = last_mod[14:]  # trim out date string
-                last_mod = datetime.strptime(last_mod_str, LAST_UPDATED_FMT)  # convert to date
-                stat = self.status.get(BUS_FILE)
-                if stat:
-                    got_last = datetime.strptime(stat['posted_date'], TIMECHECK_FMT)
-                    if got_last >= last_mod:
-                        LOG.info('No new download available for SEPTA.')
-                        self.update_existing_status(BUS_FILE)
-                        self.update_existing_status(RAIL_FILE)
-                        return
-                    else:
-                        LOG.info('New SEPTA download available.')
-                        LOG.info('Latest SEPTA download posted: %s.', last_mod)
-                        LOG.info('Previous download retrieved: %s.', got_last)
+            soup = BeautifulSoup(page.text)
+            last_mod = soup.find('div', 'col_content').find('p').text
+            LOG.info('SEPTA download page: %s.', last_mod)
+            last_mod_str = last_mod[14:]  # trim out date string
+            last_mod = datetime.strptime(last_mod_str, LAST_UPDATED_FMT)  # convert to date
+            stat = self.status.get(BUS_FILE)
+            posted_date = last_mod.strftime(TIMECHECK_FMT)
+            if stat:
+                got_last = datetime.strptime(stat['posted_date'], TIMECHECK_FMT)
+                if got_last >= last_mod:
+                    LOG.info('No new download available for SEPTA.')
+                    self.update_existing_status(BUS_FILE)
+                    self.update_existing_status(RAIL_FILE)
+                    return
                 else:
-                    LOG.debug('No previous SEPTA download found.')
-            else:
-                LOG.error('failed to get SEPTA dowload info page.')
-
-            if self.download(DOWNLOAD_FILE_NAME, URL):
-                septa_file = os.path.join(self.ddir, DOWNLOAD_FILE_NAME)
-                if self.extract(septa_file):
-                    posted_date = last_mod.strftime(TIMECHECK_FMT)
+                    LOG.info('New SEPTA download available.')
+                    LOG.info('Latest SEPTA download posted: %s.', last_mod)
+                    LOG.info('Previous download retrieved: %s.', got_last)
                     self.set_posted_date(BUS_FILE, posted_date)
                     self.set_posted_date(RAIL_FILE, posted_date)
-                    self.write_status()
-                # delete download file once the two GTFS zips in it are extracted
-                os.remove(septa_file)
+            else:
+                LOG.debug('No previous SEPTA download found.')
+        else:
+            LOG.error('failed to get SEPTA dowload info page.')
+
+        if self.download(DOWNLOAD_FILE_NAME, URL):
+            septa_file = os.path.join(self.ddir, DOWNLOAD_FILE_NAME)
+            if self.extract(septa_file):
+                self.write_status()
+            # delete download file once the two GTFS zips in it are extracted
+            os.remove(septa_file)
 
     def extract(self, file_name):
         """Extract bus and rail GTFS files from downloaded zip, then validate each."""
