@@ -1,8 +1,9 @@
 # Generated / downloaded files
-gtfs/
+gtfs/*
 *.zip
 *.p
 *.csv
+*.html
 patco-gtfs/
 
 # virtualenv

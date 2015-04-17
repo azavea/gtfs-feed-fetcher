@@ -46,9 +46,9 @@ class Path(FeedSource):
     def fetch(self):
         """No last-modified header set; check update time here."""
         if self.urls:
-            got_last_str = self.timecheck.get(FILE_NAME)
-            if got_last_str:
-                got_last = datetime.strptime(got_last_str, TIMECHECK_FMT)
+            stat = self.status.get(FILE_NAME)
+            if stat:
+                got_last = datetime.strptime(stat['posted_date'], TIMECHECK_FMT)
                 if self.last_updated:
                     if got_last >= self.last_updated:
                         LOG.info('No new download found for PATH.')
@@ -67,7 +67,7 @@ class Path(FeedSource):
 
             # Download it and verify
             if self.fetchone(FILE_NAME, url):
-                self.timecheck[FILE_NAME] = self.last_updated.strftime(TIMECHECK_FMT)
-                self.write_timecheck()
+                self.set_posted_date(FILE_NAME, self.last_updated.strftime(TIMECHECK_FMT))
+                self.write_status()
         else:
             LOG.warn('No URLs to download for PATH.')

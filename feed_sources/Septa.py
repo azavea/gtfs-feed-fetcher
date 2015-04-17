@@ -14,9 +14,14 @@ DEVELOPER_URL = 'http://www2.septa.org/developer/'
 URL = DEVELOPER_URL + 'download.php'
 LAST_UPDATED_FMT = '%a, %d %b %Y %H:%M:%S'
 
+# SEPTA provides two GTFS .zip files themselves zipped together
 DOWNLOAD_FILE_NAME = 'septa.zip'
-BUS_FILE = 'google_bus.zip'
-RAIL_FILE = 'google_rail.zip'
+# names of the two files in the downloaded .zip
+BUS_EXTRACT_FILE = 'google_bus.zip'
+RAIL_EXTRACT_FILE = 'google_rail.zip'
+# rename the extrated GTFS to this
+BUS_FILE = 'septa_bus.zip'
+RAIL_FILE = 'septa_rail.zip'
 
 LOG = logging.getLogger(__name__)
 
@@ -43,9 +48,9 @@ class Septa(FeedSource):
                 LOG.info('SEPTA download page: %s.', last_mod)
                 last_mod_str = last_mod[14:]  # trim out date string
                 last_mod = datetime.strptime(last_mod_str, LAST_UPDATED_FMT)  # convert to date
-                if self.timecheck.has_key(DOWNLOAD_FILE_NAME):
-                    got_last_str = self.timecheck.get(DOWNLOAD_FILE_NAME)
-                    got_last = datetime.strptime(got_last_str, TIMECHECK_FMT)
+                stat = self.status.get(BUS_FILE)
+                if stat:
+                    got_last = datetime.strptime(stat['posted_date'], TIMECHECK_FMT)
                     if got_last >= last_mod:
                         LOG.info('No new download available for SEPTA.')
                         self.update_existing_status(BUS_FILE)
@@ -63,8 +68,10 @@ class Septa(FeedSource):
             if self.download(DOWNLOAD_FILE_NAME, URL):
                 septa_file = os.path.join(self.ddir, DOWNLOAD_FILE_NAME)
                 if self.extract(septa_file):
-                    self.timecheck[septa_file] = last_mod.strftime(TIMECHECK_FMT)
-                    self.write_timecheck()
+                    posted_date = last_mod.strftime(TIMECHECK_FMT)
+                    self.set_posted_date(BUS_FILE, posted_date)
+                    self.set_posted_date(RAIL_FILE, posted_date)
+                    self.write_status()
                 # delete download file once the two GTFS zips in it are extracted
                 os.remove(septa_file)
 
@@ -73,9 +80,13 @@ class Septa(FeedSource):
         with zipfile.ZipFile(file_name) as zipped_septa:
             if len(zipped_septa.namelist()) == 2:
                 zipped_septa.extractall(path=self.ddir)
-                bus_path = os.path.join(self.ddir, BUS_FILE)
-                rail_path = os.path.join(self.ddir, RAIL_FILE)
+                bus_path = os.path.join(self.ddir, BUS_EXTRACT_FILE)
+                rail_path = os.path.join(self.ddir, RAIL_EXTRACT_FILE)
                 if os.path.isfile(bus_path) and os.path.isfile(rail_path):
+                    # rename the extracted files
+                    os.rename(rail_path, os.path.join(self.ddir, RAIL_FILE))
+                    os.rename(bus_path, os.path.join(self.ddir, BUS_FILE))
+
                     rail_good = bus_good = False
                     if self.verify(BUS_FILE):
                         bus_good = True

@@ -28,9 +28,9 @@ class Patco(FeedSource):
             download_url = response['assets'][0]['browser_download_url']
             last_updated_str = response['assets'][0]['updated_at']
             last_updated = datetime.strptime(last_updated_str, LAST_UPDATED_FMT)
-            got_last_str = self.timecheck.get(FILE_NAME)
-            if got_last_str:
-                got_last = datetime.strptime(got_last_str, TIMECHECK_FMT)
+            stat = self.status.get(FILE_NAME)
+            if stat:
+                got_last = datetime.strptime(stat['posted_date'], TIMECHECK_FMT)
                 LOG.debug('PATCO GTFS last fetched: %s, last updated: %s', got_last, last_updated)
                 if got_last >= last_updated:
                     LOG.info('No new download available for PATCO.')
@@ -40,7 +40,7 @@ class Patco(FeedSource):
                 LOG.info('No previous PATCO download found. Last update posted: %s', last_updated)
 
             if self.fetchone(FILE_NAME, download_url):
-                self.timecheck[FILE_NAME] = last_updated.strftime(TIMECHECK_FMT)
-                self.write_timecheck()
+                self.set_posted_date(FILE_NAME, last_updated.strftime(TIMECHECK_FMT))
+                self.write_status()
         else:
             LOG.error('Could not check GitHub relases page for PATCO.')
