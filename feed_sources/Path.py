@@ -30,7 +30,7 @@ class Path(FeedSource):
                 # last link on the page shoud be our download
                 lastlink = anchors[len(anchors)-1]
                 # last updated time is in next column in table (last-modified header not set)
-                last_updated_str = lastlink.findParent().find_next_sibling().text.strip()
+                last_updated_str = lastlink.findParent().findNextSibling().text.strip()
                 self.last_updated = datetime.strptime(last_updated_str, LAST_UPDATED_FMT)
                 filename = lastlink.text
                 LOG.debug('Found PATH download file named %s, last updated: %s',
