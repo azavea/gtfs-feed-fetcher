@@ -33,7 +33,6 @@ class Septa(FeedSource):
         First scrape the download page to see if a new feed is available,
         since the last-modified header is not set on the download.
         """
-        get_septa = True
         page = requests.get(DEVELOPER_URL)
         LOG.debug('Checking last SEPTA update time...')
         last_mod = datetime.utcnow()
@@ -49,7 +48,9 @@ class Septa(FeedSource):
                     got_last = datetime.strptime(got_last_str, TIMECHECK_FMT)
                     if got_last >= last_mod:
                         LOG.info('No new download available for SEPTA.')
-                        get_septa = False
+                        self.update_existing_status(BUS_FILE)
+                        self.update_existing_status(RAIL_FILE)
+                        return
                     else:
                         LOG.info('New SEPTA download available.')
                         LOG.info('Latest SEPTA download posted: %s.', last_mod)
@@ -59,14 +60,13 @@ class Septa(FeedSource):
             else:
                 LOG.error('failed to get SEPTA dowload info page.')
 
-            if get_septa:
-                if self.download(DOWNLOAD_FILE_NAME, URL):
-                    septa_file = os.path.join(self.ddir, DOWNLOAD_FILE_NAME)
-                    if self.extract(septa_file):
-                        self.timecheck[septa_file] = last_mod.strftime(TIMECHECK_FMT)
-                        self.write_timecheck()
-                    # delete download file once the two GTFS zips in it are extracted
-                    os.remove(septa_file)
+            if self.download(DOWNLOAD_FILE_NAME, URL):
+                septa_file = os.path.join(self.ddir, DOWNLOAD_FILE_NAME)
+                if self.extract(septa_file):
+                    self.timecheck[septa_file] = last_mod.strftime(TIMECHECK_FMT)
+                    self.write_timecheck()
+                # delete download file once the two GTFS zips in it are extracted
+                os.remove(septa_file)
 
     def extract(self, file_name):
         """Extract bus and rail GTFS files from downloaded zip, then validate each."""
@@ -78,13 +78,11 @@ class Septa(FeedSource):
                 if os.path.isfile(bus_path) and os.path.isfile(rail_path):
                     rail_good = bus_good = False
                     if self.verify(BUS_FILE):
-                        self.new_use.append(BUS_FILE)
                         bus_good = True
                     else:
                         LOG.warn('SEPTA bus GTFS verification failed.')
                         return False
                     if self.verify(RAIL_FILE):
-                        self.new_use.append(RAIL_FILE)
                         rail_good = True
                     else:
                         LOG.warn('SEPTA rail GTFS verification failed.')

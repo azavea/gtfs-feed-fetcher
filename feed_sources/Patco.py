@@ -34,6 +34,7 @@ class Patco(FeedSource):
                 LOG.debug('PATCO GTFS last fetched: %s, last updated: %s', got_last, last_updated)
                 if got_last >= last_updated:
                     LOG.info('No new download available for PATCO.')
+                    self.update_existing_status(FILE_NAME)
                     return
             else:
                 LOG.info('No previous PATCO download found. Last update posted: %s', last_updated)

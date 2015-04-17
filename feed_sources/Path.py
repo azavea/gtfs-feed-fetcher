@@ -52,6 +52,7 @@ class Path(FeedSource):
                 if self.last_updated:
                     if got_last >= self.last_updated:
                         LOG.info('No new download found for PATH.')
+                        self.update_existing_status(FILE_NAME)
                         return
                     else:
                         LOG.info('New download found for PATH posted: %s; last retrieved: %s',
@@ -63,8 +64,10 @@ class Path(FeedSource):
             else:
                 LOG.info('No previous download found for PATH.')
                 url = self.urls.get(FILE_NAME)
-                if self.fetchone(FILE_NAME, url):
-                    self.timecheck[FILE_NAME] = self.last_updated.strftime(TIMECHECK_FMT)
-                    self.write_timecheck()
+
+            # Download it and verify
+            if self.fetchone(FILE_NAME, url):
+                self.timecheck[FILE_NAME] = self.last_updated.strftime(TIMECHECK_FMT)
+                self.write_timecheck()
         else:
             LOG.warn('No URLs to download for PATH.')

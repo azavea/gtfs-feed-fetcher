@@ -2,6 +2,7 @@
 
 To add a new feed, add a subclass of this to the `feed_sources` directory.
 """
+from bs4 import BeautifulSoup
 from datetime import datetime
 import logging
 import os
@@ -15,6 +16,9 @@ LOG = logging.getLogger(__name__)
 
 # format time checks like last-modified header
 TIMECHECK_FMT = '%a, %d %b %Y %H:%M:%S GMT'
+# valid date range format used in feedvalidator output
+EFFECTIVE_DATE_FMT = '%B %d, %Y'
+
 
 class FeedSource(object):
     """Base class for a GTFS source. Class and module names are expected to match.
@@ -29,7 +33,7 @@ class FeedSource(object):
         # set properties
         self._ddir = ddir
         self._urls = None
-        self._new_use = []
+        self._status = {}
         self._timecheck = {}
         self._timecheck_file = os.path.join(self.ddir, self.__class__.__name__ + '.p')
         # load time check file
@@ -52,12 +56,18 @@ class FeedSource(object):
         self._urls = value
 
     @property
-    def new_use(self):
-        """List of new feeds successfully downloaded and validated."""
-        return self._new_use
-    @new_use.setter
-    def new_use(self, value):
-        self._new_use = value
+    def status(self):
+        """Attributes for each feed:
+            - is_new (this run)
+            - is_valid (has no errors; ignoring effective date range)
+            - is_current (false for past/future service)
+            - effective_from
+            - effective_to
+        """
+        return self._status
+    @status.setter
+    def status(self, value):
+        self._status = value
 
     @property
     def timecheck(self):
@@ -115,65 +125,117 @@ class FeedSource(object):
             pickle.dump(self.timecheck, tcf)
             LOG.debug('Time check written to %s.', self.timecheck_file)
 
-    def fetchone(self, file_name, url, verify=True, **stream):
+    def fetchone(self, file_name, url, **stream):
         """Download and validate a single feed."""
         if self.download(file_name, url, **stream):
-            if verify:
-                if self.verify(file_name):
-                    LOG.info('GTFS verification succeeded.')
-                    self.new_use.append(file_name)
-                    return True
-                else:
-                    LOG.error('GTFS verification failed.')
-                    return False
-            else:
-                LOG.debug('Skipping GTFS verification in fetch_and_validate.')
-                # not adding to new_use here; do elsewhere
+            if self.verify(file_name):
+                LOG.info('GTFS verification succeeded.')
                 return True
+            else:
+                LOG.error('GTFS verification failed.')
+                return False
         else:
             return False
 
     def verify(self, file_name):
         """Verify downloaded file looks like a good GTFS."""
+        is_valid = False
         # file_name is local to download directory
         downloaded_file = os.path.join(self.ddir, file_name)
         if not os.path.isfile(downloaded_file):
             LOG.error('File %s not found; cannot verify it.', downloaded_file)
             return False
 
+        # validation output for foo.zip will be saved as foo.html
+        validation_output_file = file_name[:-4] + '.html'
         LOG.info('Validating feed in %s...', file_name)
-        try:
-            process_cmd = ['feedvalidator.py',
-                           '--output=CONSOLE',
-                           '-m',
-                           '-n',
-                           downloaded_file]
+        future_effective = False
 
-            # Process returns failure on warnings, which most feeds have;
-            # we will return success here if there are only warnings and no errors.
-            process = subprocess.Popen(process_cmd, stdout=subprocess.PIPE)
-            out = process.communicate()
-            res = out[0].split('\n')
-            errct = res[-2:-1][0] # output line with count of errors/warnings
-            if errct.find('error') > -1:
-                LOG.error('Feed validator found errors in %s: %s.', file_name, errct)
-                return False
-            elif out[0].find('this feed is in the future,') > -1:
-                LOG.warn('Feed validator found GTFS not in service until future for %s.', file_name)
-                return False
+        process_cmd = ['feedvalidator.py',
+                       '--output=' + validation_output_file,
+                       '--memory_db',
+                       '--noprompt',
+                       downloaded_file]
+
+        # Process returns failure on warnings, which most feeds have;
+        # we will return success here if there are only warnings and no errors.
+        process = subprocess.Popen(process_cmd, stdout=subprocess.PIPE)
+        out = process.communicate()
+        res = out[0].split('\n')
+        errct = res[-2:-1][0] # output line with count of errors/warnings
+        if errct.find('error') > -1:
+            LOG.error('Feed validator found errors in %s: %s.', file_name, errct)
+        elif out[0].find('this feed is in the future,') > -1:
+            LOG.warn('Feed validator found GTFS not in service until future for %s.', file_name)
+            future_effective = True
+        else:
+            is_valid = True
+            if errct.find('successfully') > -1:
+                LOG.info('Feed %s looks great:  %s.', file_name, errct)
             else:
-                if errct.find('successfully') > -1:
-                    LOG.info('Feed %s looks great:  %s.', file_name, errct)
-                else:
-                    # have warnings
-                    LOG.info('Feed %s looks ok:  %s.', file_name, errct[7:])
-                return True
-        except IndexError:
-            LOG.error('Could not parse feed validation results for %s: %s', file_name, out)
-            return False
+                # have warnings
+                LOG.info('Feed %s looks ok:  %s.', file_name, errct[7:])
 
-        LOG.error('How did we get here?  Verifying %s.', file_name)
-        return False # should have returned above
+
+        # look at HTML validation output to find valid date range
+        with open(validation_output_file, 'rb') as output:
+            soup = BeautifulSoup(output)
+            elem = soup.find(text='Effective:')
+            effective_date_string = elem.findParent().findNextSibling().text
+            LOG.debug('Feed effective %s.', effective_date_string)
+            from_date_str, to_date_str = effective_date_string.split(' to ')
+            from_date = datetime.strptime(from_date_str, EFFECTIVE_DATE_FMT)
+            to_date = datetime.strptime(to_date_str, EFFECTIVE_DATE_FMT)
+
+        # TODO: something else with this status?
+        if future_effective:
+            LOG.warn('Feed %s becomes effective %s.', file_name, from_date)
+
+        self.status[file_name] = {
+            'is_new': True,
+            'is_valid': is_valid,
+            'is_current': self.is_current(file_name),
+            'effective_from': from_date,
+            'effective_to': to_date
+        }
+
+        return is_valid
+
+    def is_current(self, file_name):
+        """Return true if feed is currently effective.
+
+        Expects effective_from and effective_to to be set on :status: for file.
+        """
+        stat = self.status.get(file_name)
+        if not stat:
+            LOG.error('No status entry found for %s; not setting effective status.')
+            return False
+        today = datetime.today()
+        warn_days = 30  # warn if feed is within this many days of expiring
+        if stat.effective_from > today:
+            LOG.warn('Feed %s not effective until %s.', file_name, stat.effective_from)
+            return False
+        if stat.effective_to < today:
+            LOG.warn('Feed %s expired %s.', file_name, stat.efective_to)
+            return False
+        elif stat.effective_to <= (today + warn_days):
+            LOG.warn('Feed %s will expire %s.', file_name, stat.effective_to)
+        LOG.debug('Feed %s is currently effective.', file_name)
+        return True
+
+    def update_existing_status(self, file_name):
+        """Update the status entry for a file when no new download is available."""
+        stat = self.status.get(file_name)
+        if not stat:
+            LOG.error('No status entry found for %s; not setting effective status.', file_name)
+            return
+        self.status[file_name]['is_new'] = False
+        was_current = self.status[file_name]['is_current']
+        now_current = self.is_current(file_name)
+        self.status[file_name]['is_current'] = now_current
+        if not was_current and now_current:
+            # TODO: something else to alert of a now-effective feed?
+            LOG.info('Previously downloaded feed %s has now become effective.')
 
     def check_header_newer(self, url, file_name):
         """return 1 if newer file available to download;
@@ -187,6 +249,7 @@ class FeedSource(object):
                 last_mod = hdr.get('last-modified')
                 if last_fetch >= last_mod:
                     LOG.info('No new download available for %s.', file_name)
+                    self.update_existing_status(file_name)
                     return -1
                 else:
                     LOG.info('New download available for %s.', file_name)
