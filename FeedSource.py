@@ -99,7 +99,7 @@ class FeedSource(object):
         if os.path.isfile(self.status_file):
             with open(self.status_file, 'rb') as tcf:
                 self.status = pickle.load(tcf)
-                LOG.debug('Loaded time check file.')
+                LOG.debug('Loaded status file.')
             if self.status.has_key('last_check'):
                 last_fetch = self.status.get('last_check')
                 LOG.info('Last fetch at: %s', last_fetch)
@@ -112,10 +112,10 @@ class FeedSource(object):
 
     def write_status(self):
         """Write pickled log of feed statuses and last times files were downloaded."""
-        LOG.debug('Downloading finished.  Writing time check file %s...', self.status_file)
+        LOG.debug('Downloading finished.  Writing status file %s...', self.status_file)
         with open(self.status_file, 'wb') as tcf:
             pickle.dump(self.status, tcf)
-            LOG.debug('Time check written to %s.', self.status_file)
+            LOG.debug('Statuses written to %s.', self.status_file)
 
     def fetchone(self, file_name, url, **stream):
         """Download and validate a single feed."""
@@ -226,7 +226,6 @@ class FeedSource(object):
            return 0 if info missing;
            return -1 if current file is most recent."""
         if self.status.has_key(file_name):
-            LOG.debug('Status for %s: %s', file_name, self.status[file_name])
             last_fetch = self.status[file_name]['posted_date']
             hdr = requests.head(url)
             hdr = hdr.headers
