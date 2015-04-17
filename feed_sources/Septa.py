@@ -60,19 +60,28 @@ class Septa(FeedSource):
                     LOG.info('New SEPTA download available.')
                     LOG.info('Latest SEPTA download posted: %s.', last_mod)
                     LOG.info('Previous download retrieved: %s.', got_last)
-                    self.set_posted_date(BUS_FILE, posted_date)
-                    self.set_posted_date(RAIL_FILE, posted_date)
             else:
                 LOG.debug('No previous SEPTA download found.')
         else:
             LOG.error('failed to get SEPTA dowload info page.')
 
+        self.set_posted_date(BUS_FILE, posted_date)
+        self.set_posted_date(RAIL_FILE, posted_date)
+
         if self.download(DOWNLOAD_FILE_NAME, URL):
+            # remove posted date status for parent zip
+            del self.status[DOWNLOAD_FILE_NAME]
             septa_file = os.path.join(self.ddir, DOWNLOAD_FILE_NAME)
             if self.extract(septa_file):
                 self.write_status()
             # delete download file once the two GTFS zips in it are extracted
             os.remove(septa_file)
+        else:
+            # clear error for parent septa.zip download, and set statuses for bus and rail feeds
+            err = self.status.get(DOWNLOAD_FILE_NAME, 'Could not download file')
+            self.status = {}
+            self.set_error(BUS_FILE, err)
+            self.set_error(RAIL_FILE, err)
 
     def extract(self, file_name):
         """Extract bus and rail GTFS files from downloaded zip, then validate each."""

@@ -1,5 +1,6 @@
 # Generated / downloaded files
 gtfs/*
+!.gitkeep
 *.zip
 *.p
 *.csv

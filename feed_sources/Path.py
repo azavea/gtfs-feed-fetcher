@@ -45,29 +45,26 @@ class Path(FeedSource):
 
     def fetch(self):
         """No last-modified header set; check update time here."""
-        if self.urls:
-            stat = self.status.get(FILE_NAME)
-            if stat:
-                got_last = datetime.strptime(stat['posted_date'], TIMECHECK_FMT)
-                if self.last_updated:
-                    if got_last >= self.last_updated:
-                        LOG.info('No new download found for PATH.')
-                        self.update_existing_status(FILE_NAME)
-                        return
-                    else:
-                        LOG.info('New download found for PATH posted: %s; last retrieved: %s',
-                                 self.last_updated,
-                                 got_last)
+        stat = self.status.get(FILE_NAME)
+        if stat:
+            got_last = datetime.strptime(stat['posted_date'], TIMECHECK_FMT)
+            if self.last_updated:
+                if got_last >= self.last_updated:
+                    LOG.info('No new download found for PATH.')
+                    self.update_existing_status(FILE_NAME)
+                    return
                 else:
-                    LOG.error('No last updated time found for PATH.')
-                    self.last_updated = datetime.utcnow()
+                    LOG.info('New download found for PATH posted: %s; last retrieved: %s',
+                             self.last_updated,
+                             got_last)
             else:
-                LOG.info('No previous download found for PATH.')
-
-            # Download it and verify
-            url = self.urls.get(FILE_NAME)
-            if self.fetchone(FILE_NAME, url):
-                self.set_posted_date(FILE_NAME, self.last_updated.strftime(TIMECHECK_FMT))
-                self.write_status()
+                LOG.error('No last updated time found for PATH.')
+                self.last_updated = datetime.utcnow()
         else:
-            LOG.warn('No URLs to download for PATH.')
+            LOG.info('No previous download found for PATH.')
+
+        # Download it and verify
+        url = self.urls.get(FILE_NAME)
+        if self.fetchone(FILE_NAME, url):
+            self.set_posted_date(FILE_NAME, self.last_updated.strftime(TIMECHECK_FMT))
+            self.write_status()

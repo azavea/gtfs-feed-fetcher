@@ -59,10 +59,12 @@ class FeedSource(object):
         """Attributes for each feed:
             - is_new (this run)
             - is_valid (has no errors; ignoring effective date range)
-            - is_current (false for past/future service)
+            - is_current (false if service not currently effective)
             - effective_from
             - effective_to
             - posted_date (When feed was posted, or when retrieved, if post date unknown)
+            - newly_effective - set if feed was not effective when retrieved, but is now
+            - error - message if error encountered in processing; other fields will be unset
         """
         return self._status
     @status.setter
@@ -135,11 +137,11 @@ class FeedSource(object):
         # file_name is local to download directory
         downloaded_file = os.path.join(self.ddir, file_name)
         if not os.path.isfile(downloaded_file):
-            LOG.error('File %s not found; cannot verify it.', downloaded_file)
+            self.set_error(file_name, 'File not found for validation')
             return False
 
         # validation output for foo.zip will be saved as foo.html
-        validation_output_file = file_name[:-4] + '.html'
+        validation_output_file = os.path.join(self.ddir, file_name[:-4] + '.html')
         LOG.info('Validating feed in %s...', file_name)
 
         process_cmd = ['feedvalidator.py',
@@ -155,6 +157,7 @@ class FeedSource(object):
         if errct.find('error') > -1:
             LOG.error('Feed validator found errors in %s: %s.', file_name, errct)
         elif out[0].find('this feed is in the future,') > -1:
+            # will check for this again when we get the effective dates from the HTML output
             LOG.warn('Feed validator found GTFS not in service until future for %s.', file_name)
         else:
             is_valid = True
@@ -175,12 +178,11 @@ class FeedSource(object):
             to_date = datetime.strptime(to_date_str, EFFECTIVE_DATE_FMT)
 
         # should have status with at least posted_date set at this point
-        stat = self.status[file_name]
-        stat['is_new'] = True
-        stat['is_valid'] = is_valid
-        stat['effective_from'] = from_date
-        stat['effective_to'] = to_date
-        self.status[file_name] = stat
+        self.status[file_name]['is_new'] = True
+        self.status[file_name]['is_valid'] = is_valid
+        self.status[file_name]['effective_from'] = from_date
+        self.status[file_name]['effective_to'] = to_date
+        # check if current once effective dates have been set
         self.status[file_name]['is_current'] = self.is_current(file_name)
 
         return is_valid
@@ -191,7 +193,7 @@ class FeedSource(object):
         Expects effective_from and effective_to to be set on :status: for file.
         """
         stat = self.status.get(file_name)
-        if not stat:
+        if not stat or stat.has_key('error'):
             LOG.error('No status effective dates found for %s.')
             return False
         today = datetime.today()
@@ -214,12 +216,14 @@ class FeedSource(object):
             LOG.error('No status entry found for %s; not setting effective status.', file_name)
             return
         self.status[file_name]['is_new'] = False
-        was_current = self.status[file_name]['is_current']
+        was_current = self.status[file_name].get('is_current')
         now_current = self.is_current(file_name)
         self.status[file_name]['is_current'] = now_current
         if not was_current and now_current:
-            # TODO: something else to alert of a now-effective feed?
+            self.status[file_name]['newly_effective'] = True
             LOG.info('Previously downloaded feed %s has now become effective.')
+        elif self.status[file_name].get('newly_effective'):
+            del self.status[file_name]['newly_effective']
 
     def check_header_newer(self, url, file_name):
         """return 1 if newer file available to download;
@@ -252,6 +256,7 @@ class FeedSource(object):
         """Download feed."""
         LOG.debug('In get_stream to get file %s from URL %s.', file_name, url)
         if self.check_header_newer(url, file_name) == -1:
+            # Nothing new to fetch; done here
             return False
         # file_name is local to download directory
         file_path = os.path.join(self.ddir, file_name)
@@ -274,18 +279,17 @@ class FeedSource(object):
                 # file smaller than 10K; may not be a GTFS
                 LOG.warn('Download for %s is only %s bytes.', file_path, str(info.st_size))
             if not zipfile.is_zipfile(file_path):
-                LOG.error('Bad download for %s.', file_path)
-                print('Download for %s is not a zip file.', file_path)
+                self.set_error(file_name, 'Download is not a zip file')
                 return False
             posted_date = request.headers.get('last-modified')
             if not posted_date:
-                LOG.debug('No last-modified header set; using current date for posted_date.')
+                LOG.debug('No last-modified header set')
                 posted_date = datetime.utcnow().strftime(TIMECHECK_FMT)
             self.set_posted_date(file_name, posted_date)
             LOG.info('Download completed successfully.')
             return True
         else:
-            LOG.error('Download failed for %s.', file_name)
+            self.set_error(file_name, 'Download failed')
         return False
 
     def set_posted_date(self, file_name, posted_date):
@@ -293,3 +297,10 @@ class FeedSource(object):
         stat = self.status.get(file_name, {})
         stat['posted_date'] = posted_date
         self.status[file_name] = stat
+
+    def set_error(self, file_name, msg):
+        """If error encountered in processing, set status error message, and unset other fields"""
+        LOG.error('Error processing %s: %s', file_name, msg)
+        self.status[file_name] = {'error': msg}
+        # write out status file immediately
+        self.write_status()

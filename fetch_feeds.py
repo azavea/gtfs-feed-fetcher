@@ -16,11 +16,15 @@ LOG.setLevel(logging.DEBUG)
 
 NJ_TRANSIT_CLASS = 'NJTransit'
 
-def fetch_all(get_nj, nj_username, nj_password):
+def fetch_all(get_nj, nj_username, nj_password, sources=None):
     """Fetch from all FeedSources in the feed_sources directory."""
-    # make a copy
-    sources = list(feed_sources.__all__)
     LOG.info('Going to fetch feeds from sources: %s', sources)
+    statuses = {}  # collect the statuses for all the files
+
+    # make a copy of the list of all modules in feed_sources;
+    # default to use all of them (excluding NJ, if not requested)
+    if not sources:
+        sources = list(feed_sources.__all__)
 
     # NJ TRANSIT requires some special handling; do that here
     if NJ_TRANSIT_CLASS in sources:
@@ -32,6 +36,7 @@ def fetch_all(get_nj, nj_username, nj_password):
             inst = klass()
             inst.nj_payload = {'userName': nj_username, 'password': nj_password}
             inst.fetch()
+            statuses.update(inst.status)
         else:
             LOG.info('Skipping NJ data fetch.')
     elif get_nj:
@@ -39,14 +44,34 @@ def fetch_all(get_nj, nj_username, nj_password):
 
     for src in sources:
         LOG.debug('Going to start fetch for %s...', src)
-        mod = getattr(feed_sources, src)
-        # expect a class with the same name as the module; instantiate and fetch its feeds
-        klass = getattr(mod, src)
-        if issubclass(klass, FeedSource):
-            inst = klass()
-            inst.fetch()
-        else:
-            LOG.warn('Skipping class %s, which does not subclass FeedSource.', klass.__name__)
+        try:
+            mod = getattr(feed_sources, src)
+            # expect a class with the same name as the module; instantiate and fetch its feeds
+            klass = getattr(mod, src)
+            if issubclass(klass, FeedSource):
+                inst = klass()
+                inst.fetch()
+                statuses.update(inst.status)
+            else:
+                LOG.warn('Skipping class %s, which does not subclass FeedSource.', klass.__name__)
+        except AttributeError:
+            LOG.error('Skipping feed %s, which could not be found.', src)
+
+    # remove last check key set at top level of each status dictionary
+    del statuses['last_check']
+    for file_name in statuses:
+        stat = statuses[file_name]
+        if stat.has_key('error'):
+            LOG.error('Error processing %s: %s', file_name, stat['error'])
+            continue
+        msg = ''
+        msg += 'is new; ' if stat['is_new'] else 'is not new; '
+        msg += 'is valid; ' if stat['is_valid'] else 'is not valid; '
+        msg += 'is current.' if stat['is_current'] else 'is not current.'
+        msg += ' Newly effective!' if stat.get('newly_effective') else ''
+
+        LOG.info('File %s %s', file_name, msg)
+    LOG.info('All done!')
 
 def main():
     """Main entry point for command line interface."""
@@ -57,6 +82,8 @@ def main():
                         help='Username for NJ TRANSIT developer account (optional)')
     parser.add_argument('--nj-password',
                         help='Password for NJ TRANSIT developer account (optional)')
+    parser.add_argument('--feeds',
+                        help='Comma-separated list of feeds to get (optional; default: all)')
 
     args = parser.parse_args()
     if args.get_nj and (not args.nj_username or not args.nj_password):
@@ -64,7 +91,12 @@ def main():
         sys.exit(1)
 
     # should specify --get-nj when email received saying new download available
-    fetch_all(args.get_nj, args.nj_username, args.nj_password)
+    if args.feeds:
+        sources = args.feeds.split(',')
+        LOG.debug('Running with sources %s.', sources)
+        fetch_all(args.get_nj, args.nj_username, args.nj_password, sources=sources)
+    else:
+        fetch_all(args.get_nj, args.nj_username, args.nj_password)
 
 if __name__ == '__main__':
     main()
