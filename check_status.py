@@ -17,6 +17,7 @@ LOG.setLevel(logging.WARN)
 
 
 def check_current(file_name, stat, warn_days):
+    """Check effective date range on feed."""
     today = datetime.today()
     if stat['effective_from'] > today:
         LOG.warn('Feed %s not effective until %s.', file_name, stat['effective_from'])
@@ -41,19 +42,19 @@ def read_status(file_name, statuses, warn_days):
             LOG.debug('Checking status for feed %s...', feed)
             stat = statuses[feed]
             if stat.has_key('error'):
-                LOG.error('Error processing %s: %s', file_name, stat['error'])
+                LOG.error('Error processing %s: %s', feed, stat['error'])
                 return
             if stat['is_new']:
-                LOG.info('Feed %s is new.')
+                LOG.info('Feed %s is new.', feed)
             else:
-                LOG.debug('Feed %s is not new.')
+                LOG.debug('Feed %s is not new.', feed)
             if stat['is_valid']:
-                LOG.debug('Feed %s is valid.')
+                LOG.debug('Feed %s is valid.', feed)
             else:
-                LOG.warn('Feed %s is not valid.')
+                LOG.warn('Feed %s is not valid.', feed)
             check_current(feed, stat, warn_days)
             if stat.get('newly_effective'):
-                LOG.warn('Feed %s has become effective since the preceeding check.')
+                LOG.warn('Feed %s has become effective since the preceeding check.', feed)
 
     except KeyError as ex:
         LOG.error('Status for %s not in expected format.  Missing key: %s', file_name, ex.message)
@@ -61,7 +62,6 @@ def read_status(file_name, statuses, warn_days):
 def check_status(status_directory, warn_days):
     """Report on the status of the downloaded feeds, according to their status files in the
     download directory."""
-    statuses = {}
     status_files = []
     for pdir, dirs, feed_files in os.walk(status_directory):
         if dirs:
@@ -78,22 +78,6 @@ def check_status(status_directory, warn_days):
             status = pickle.load(statfile)
             read_status(os.path.basename(status_path), status, warn_days)
 
-    # remove last check key set at top level of each status dictionary
-    if statuses.has_key('last_check'):
-        del statuses['last_check']
-
-    for file_name in statuses:
-        stat = statuses[file_name]
-        if stat.has_key('error'):
-            LOG.error('Error processing %s: %s', file_name, stat['error'])
-            continue
-        msg = ''
-        msg += 'is new; ' if stat['is_new'] else 'is not new; '
-        msg += 'is valid; ' if stat['is_valid'] else 'is not valid; '
-        msg += 'is current.' if stat['is_current'] else 'is not current.'
-        msg += ' Newly effective!' if stat.get('newly_effective') else ''
-
-        LOG.info('File %s %s', file_name, msg)
     LOG.info('All done!')
 
 def main():
