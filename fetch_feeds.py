@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 """Command line interface for fetching GTFS."""
 import argparse
+import getpass
 import logging
 import sys
 
@@ -81,28 +82,26 @@ def main():
     parser = argparse.ArgumentParser(description='Fetch GTFS feeds and validate them.')
     parser.add_argument('--get-nj', action='store_true',
                         help='Fetch NJ TRANSIT (requires username and password; default: false)')
-    parser.add_argument('--nj-username',
-                        help='Username for NJ TRANSIT developer account (optional)')
-    parser.add_argument('--nj-password',
-                        help='Password for NJ TRANSIT developer account (optional)')
     parser.add_argument('--feeds',
                         help='Comma-separated list of feeds to get (optional; default: all)')
-    parser.add_argument('--verbose', '-v', action='count')
+    parser.add_argument('--verbose', '-v', action='count',
+                        help='Set output log level to debug (default log level: info)')
 
     args = parser.parse_args()
     if args.verbose:
         LOG.setLevel(logging.DEBUG)
 
-    if args.get_nj and (not args.nj_username or not args.nj_password):
-        LOG.warn('--nj-username and --nj-password are required to fetch NJ TRANSIT feeds.')
-        sys.exit(1)
+    # Should specify --get-nj when email received saying new download available.
+    # Prompt for username/password when --get-nj specified.
+    if args.get_nj:
+        nj_username = raw_input('NJ TRANSIT developer username: ')
+        nj_password = getpass.getpass(prompt='NJ TRANSIT developer password: ')
 
-    # should specify --get-nj when email received saying new download available
     if args.feeds:
         sources = args.feeds.split(',')
-        fetch_all(args.get_nj, args.nj_username, args.nj_password, sources=sources)
+        fetch_all(args.get_nj, nj_username, nj_password, sources=sources)
     else:
-        fetch_all(args.get_nj, args.nj_username, args.nj_password)
+        fetch_all(args.get_nj, nj_username, nj_password)
 
 if __name__ == '__main__':
     main()

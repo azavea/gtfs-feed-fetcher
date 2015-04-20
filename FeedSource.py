@@ -229,7 +229,7 @@ class FeedSource(object):
         """return 1 if newer file available to download;
            return 0 if info missing;
            return -1 if current file is most recent."""
-        if self.status.has_key(file_name):
+        if self.status.has_key(file_name) and self.status[file_name].has_key('posted_date'):
             last_fetch = self.status[file_name]['posted_date']
             hdr = requests.head(url)
             hdr = hdr.headers
