@@ -5,6 +5,9 @@ from FeedSource import FeedSource
 
 LOG = logging.getLogger(__name__)
 
+BASE_URL = 'http://www.cttransit.com/uploads_GTFS/'
+SHORELINE_EAST_URL = 'http://www.shorelineeast.com/google_transit.zip'
+
 
 class CTTransit(FeedSource):
     """Fetch PATH feed."""
@@ -17,9 +20,9 @@ class CTTransit(FeedSource):
 
         urls = {}
         for sfx in ct_suffixes:
-            url = 'http://www.cttransit.com/uploads_GTFS/google%s_transit.zip' % ct_suffixes[sfx]
+            url = '%sgoogle%s_transit.zip' % (BASE_URL, ct_suffixes[sfx])
             filename = 'ct_%s.zip' % ct_suffixes[sfx]
             urls[filename] = url
 
-        urls['ct_shoreline_east'] = 'http://www.shorelineeast.com/google_transit.zip'
+        urls['ct_shoreline_east.zip'] = SHORELINE_EAST_URL
         self.urls = urls

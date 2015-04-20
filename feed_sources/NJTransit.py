@@ -34,6 +34,6 @@ class NJTransit(FeedSource):
         for filename in self.urls:
             url = self.urls.get(filename)
             if self.fetchone(filename, url, session=session):
-                self.write_timecheck()
+                self.write_status()
 
         session.close()

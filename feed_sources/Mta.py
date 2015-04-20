@@ -40,4 +40,4 @@ class Mta(FeedSource):
         for filename in self.urls:
             url = self.urls.get(filename)
             if self.fetchone(filename, url, do_stream=False):
-                self.write_timecheck()
+                self.write_status()

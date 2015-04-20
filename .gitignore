@@ -1,8 +1,10 @@
 # Generated / downloaded files
-gtfs/
+gtfs/*
+!.gitkeep
 *.zip
 *.p
 *.csv
+*.html
 patco-gtfs/
 
 # virtualenv
