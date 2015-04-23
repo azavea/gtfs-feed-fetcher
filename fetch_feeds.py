@@ -18,7 +18,13 @@ LOG.setLevel(logging.INFO)
 NJ_TRANSIT_CLASS = 'NJTransit'
 
 def fetch_all(get_nj, nj_username, nj_password, sources=None):
-    """Fetch from all FeedSources in the feed_sources directory."""
+    """Fetch from all FeedSources in the feed_sources directory.
+
+    :param get_nj: If True, fetch feeds for NJ TRANSIT
+    :param nj_username: Username of NJ TRANSIT developer account (required if :get_nj: is True)
+    :param nj_password: Password to NJ TRANSIT developer account (required if :get_nj: is True)
+    :param sources: List of :FeedSource: modules to fetch; if not set, will fetch all available.
+    """
     statuses = {}  # collect the statuses for all the files
 
     # make a copy of the list of all modules in feed_sources;

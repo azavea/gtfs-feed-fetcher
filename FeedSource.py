@@ -120,7 +120,13 @@ class FeedSource(object):
             LOG.debug('Statuses written to %s.', self.status_file)
 
     def fetchone(self, file_name, url, **stream):
-        """Download and validate a single feed."""
+        """Download and validate a single feed.
+
+        :param file_name: Name to which downloaded file should be saved in :ddir: (relative)
+        :param url: Location where GTFS will be downloaded from
+        :param **stream: Additional arguments to pass to :download:
+        :returns: True if file was downloaded successfully and passed verification
+        """
         if self.download(file_name, url, **stream):
             if self.verify(file_name):
                 LOG.info('GTFS verification succeeded.')
@@ -132,7 +138,11 @@ class FeedSource(object):
             return False
 
     def verify(self, file_name):
-        """Verify downloaded file looks like a good GTFS."""
+        """Verify downloaded file looks like a good GTFS, using Google's feedvalidator.py.
+
+        :param file_name: Name of GTFS to verify in :ddir: (relative)
+        :returns: True if GTFS passed validation (excluding future effective date rule)
+        """
         is_valid = False
         # file_name is local to download directory
         downloaded_file = os.path.join(self.ddir, file_name)
@@ -188,9 +198,13 @@ class FeedSource(object):
         return is_valid
 
     def is_current(self, file_name):
-        """Return true if feed is currently effective.
+        """Check if feed is currently effective.
 
-        Expects effective_from and effective_to to be set on :status: for file.
+        .. note::
+           Expects effective_from and effective_to to be set on :status: for file.
+
+        :param file_name: Name of GTFS file downloaded (relative to :ddir:)
+        :returns: True if feed is currently effective.
         """
         stat = self.status.get(file_name)
         if not stat or stat.has_key('error'):
@@ -226,9 +240,12 @@ class FeedSource(object):
             del self.status[file_name]['newly_effective']
 
     def check_header_newer(self, url, file_name):
-        """return 1 if newer file available to download;
-           return 0 if info missing;
-           return -1 if current file is most recent."""
+        """Check if last-modified header indicates a new download is available.
+
+        :param url: Where GTFS is downloaded from
+        :param file_name: Name of downloaded file (relative to :ddir:)
+        :returns: 1 if newer GTFS available; 0 if info missing; -1 if already have most recent
+        """
         if self.status.has_key(file_name) and self.status[file_name].has_key('posted_date'):
             last_fetch = self.status[file_name]['posted_date']
             hdr = requests.head(url)
@@ -253,7 +270,14 @@ class FeedSource(object):
             return 0
 
     def download(self, file_name, url, do_stream=True, session=None):
-        """Download feed."""
+        """Download feed.
+
+        :param file_name: File name to save download as, relative to :ddir:
+        :param url: Where to download the GTFS from
+        :param do_stream: If True, stream the download
+        :param session: If set, the open session within which to send the request
+        :returns: True if download was successful
+        """
         LOG.debug('In get_stream to get file %s from URL %s.', file_name, url)
         if self.check_header_newer(url, file_name) == -1:
             # Nothing new to fetch; done here
@@ -293,13 +317,21 @@ class FeedSource(object):
         return False
 
     def set_posted_date(self, file_name, posted_date):
-        """Update feed status posted date. Creates new feed status if none found."""
+        """Update feed status posted date. Creates new feed status if none found.
+
+        :param file_name: Name of feed file, relative to :ddir:
+        :param posted_date: Date string formatted to :TIMECHECK_FMT: when feed was posted
+        """
         stat = self.status.get(file_name, {})
         stat['posted_date'] = posted_date
         self.status[file_name] = stat
 
     def set_error(self, file_name, msg):
-        """If error encountered in processing, set status error message, and unset other fields"""
+        """If error encountered in processing, set status error message, and unset other fields.
+
+        :param file_name: Name of feed file, relative to :ddir:
+        :param msg: Error message to save with status
+        """
         LOG.error('Error processing %s: %s', file_name, msg)
         self.status[file_name] = {'error': msg}
         # write out status file immediately

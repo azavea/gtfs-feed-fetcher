@@ -20,7 +20,11 @@ LOG.setLevel(logging.INFO)
 
 
 def extend_feed(feed_path, effective_days):
-    """Extend feed effective date range."""
+    """Extend feed effective date range.
+
+    :param feed_path: Full path to the GTFS to extend
+    :param effective_days Number of days from today the feed should extend into future and past
+    """
     file_name = os.path.basename(feed_path)
     tmpdir = os.path.join(os.path.dirname(feed_path), 'tmp')
     if os.path.isdir(tmpdir):
@@ -43,7 +47,7 @@ def extend_feed(feed_path, effective_days):
         fldnames = csvdict.fieldnames
         cal = [x for x in csvdict]
     # flag to track whether this feed's effective dates have actually been extended
-    cal = need_modification(cal, effective_days)
+    cal = extended_calendar(cal, effective_days)
     if cal:
         with open(os.path.join(tmpdir, 'calendar.txt'), 'wb') as cal_file:
             csvdict = csv.DictWriter(cal_file, fieldnames=fldnames)
@@ -69,7 +73,11 @@ def extend_feed(feed_path, effective_days):
     shutil.rmtree(tmpdir)
 
 def extend_feeds(feed_directory, effective_days):
-    """Extend effective dates for all fees found in given directory."""
+    """Extend effective dates for all fees found in given directory.
+
+    :param feed_directory: Full path to the directory containing the GTFS to extend
+    :param effective_days: Number of days from today into future and past to extend the feeds
+    """
     LOG.debug('Extending effective dates for feeds in %s...', feed_directory)
     for pdir, _, feed_files in os.walk(feed_directory):
         for feed_file in feed_files:
@@ -82,8 +90,13 @@ def extend_feeds(feed_directory, effective_days):
 
     LOG.info('All done!')
 
-def need_modification(cal, effective_days):
-    """If calendar needs extension, returns extended calendar; otherwise, returns false."""
+def extended_calendar(cal, effective_days):
+    """Extends the effective date range for the given calendar.
+
+    :param cal Dictionary of calendar.txt values
+    :param effective_days Number of days from today the effective dates should extend
+    :returns Extended calendar, or False if calendar does not require extension.
+    """
     past_start = datetime.today() - timedelta(days=effective_days)
     future_end = datetime.today() + timedelta(days=effective_days)
     LOG.debug('Extending feed to be effective from %s to %s.', past_start, future_end)
