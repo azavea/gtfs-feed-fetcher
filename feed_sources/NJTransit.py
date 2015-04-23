@@ -21,7 +21,7 @@ class NJTransit(FeedSource):
     """Create session to fetch NJ TRANSIT feed bus and rail feeds."""
     def __init__(self):
         super(NJTransit, self).__init__()
-        self.urls = {'nj_bus.zip': URL + 'bus', 'nj_rail.zip': URL + 'rail'}
+        self.urls = {'nj_rail.zip': URL + 'rail', 'nj_bus.zip': URL + 'bus'}
         self.nj_payload = {} # need to set username and password in this to log in
 
     def fetch(self):
@@ -29,11 +29,15 @@ class NJTransit(FeedSource):
 
         First logs on to create session before fetching and validating downloads.
         """
-        session = requests.Session()
-        session.post(LOGIN_URL, data=self.nj_payload)
         for filename in self.urls:
-            url = self.urls.get(filename)
-            if self.fetchone(filename, url, session=session):
-                self.write_status()
-
-        session.close()
+            session = requests.Session()
+            login = session.post(LOGIN_URL, data=self.nj_payload)
+            if login.ok:
+                LOG.debug('Logged in to NJ TRANSIT successfully.')
+                url = self.urls.get(filename)
+                if self.fetchone(filename, url, session=session):
+                    self.write_status()
+            else:
+                LOG.error('Failed to log in to NJ TRANSIT. Response status: %s: %s.',
+                          login.status_code, login.reason)
+            session.close()
