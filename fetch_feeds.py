@@ -82,7 +82,7 @@ def main():
     parser = argparse.ArgumentParser(description='Fetch GTFS feeds and validate them.')
     parser.add_argument('--get-nj', action='store_true',
                         help='Fetch NJ TRANSIT (requires username and password; default: false)')
-    parser.add_argument('--feeds',
+    parser.add_argument('--feeds', '-f',
                         help='Comma-separated list of feeds to get (optional; default: all)')
     parser.add_argument('--verbose', '-v', action='count',
                         help='Set output log level to debug (default log level: info)')
