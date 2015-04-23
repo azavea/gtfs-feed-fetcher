@@ -93,6 +93,8 @@ def main():
 
     # Should specify --get-nj when email received saying new download available.
     # Prompt for username/password when --get-nj specified.
+    nj_username = ''
+    nj_password = ''
     if args.get_nj:
         nj_username = raw_input('NJ TRANSIT developer username: ')
         nj_password = getpass.getpass(prompt='NJ TRANSIT developer password: ')
