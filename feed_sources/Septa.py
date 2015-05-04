@@ -68,7 +68,7 @@ class Septa(FeedSource):
         self.set_posted_date(BUS_FILE, posted_date)
         self.set_posted_date(RAIL_FILE, posted_date)
 
-        if self.download(DOWNLOAD_FILE_NAME, URL):
+        if self.download(DOWNLOAD_FILE_NAME, URL, do_stream=False):
             # remove posted date status for parent zip
             del self.status[DOWNLOAD_FILE_NAME]
             septa_file = os.path.join(self.ddir, DOWNLOAD_FILE_NAME)
