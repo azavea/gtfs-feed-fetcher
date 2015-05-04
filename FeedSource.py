@@ -183,9 +183,14 @@ class FeedSource(object):
             soup = BeautifulSoup(output)
             effective_dates = soup.find(text='Effective:').findParent().findNextSibling().text
             LOG.debug('Feed effective %s.', effective_dates)
-            from_date_str, to_date_str = effective_dates.split(' to ')
-            from_date = datetime.strptime(from_date_str, EFFECTIVE_DATE_FMT)
-            to_date = datetime.strptime(to_date_str, EFFECTIVE_DATE_FMT)
+            if effective_dates and effective_dates.find(' to ') > -1:
+                from_date_str, to_date_str = effective_dates.split(' to ')
+                from_date = datetime.strptime(from_date_str, EFFECTIVE_DATE_FMT)
+                to_date = datetime.strptime(to_date_str, EFFECTIVE_DATE_FMT)
+            else:
+                LOG.debug('No effective dates found for feed %s.', file_name)
+                from_date = 'UNKNOWN'
+                to_date = 'UNKNOWN'
 
         # should have status with at least posted_date set at this point
         self.status[file_name]['is_new'] = True
@@ -207,16 +212,19 @@ class FeedSource(object):
         :returns: True if feed is currently effective.
         """
         stat = self.status.get(file_name)
-        if not stat or stat.has_key('error'):
-            LOG.error('No status effective dates found for %s.')
+        if not stat or stat.has_key('error') or not stat.has_key('effective_from'):
+            LOG.error('No status effective dates found for %s.', file_name)
             return False
+        if not isinstance(stat['effective_from'], datetime):
+            LOG.warn('Feed %s has no effective dates in calendar.txt.', file_name)
+            return True
         today = datetime.today()
         warn_days = 30  # warn if feed is within this many days of expiring
         if stat['effective_from'] > today:
             LOG.warn('Feed %s not effective until %s.', file_name, stat['effective_from'])
             return False
         if stat['effective_to'] < today:
-            LOG.warn('Feed %s expired %s.', file_name, stat['efective_to'])
+            LOG.warn('Feed %s expired %s.', file_name, stat['effective_to'])
             return False
         elif stat['effective_to'] <= (today + timedelta(days=warn_days)):
             LOG.warn('Feed %s will expire %s.', file_name, stat['effective_to'])
