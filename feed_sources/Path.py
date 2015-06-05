@@ -10,7 +10,7 @@ from FeedSource import FeedSource, TIMECHECK_FMT
 
 URL = 'http://trilliumtransit.com/transit_feeds/path-nj-us/'
 FILE_NAME = 'path.zip'
-LAST_UPDATED_FMT = '%d-%b-%Y %H:%M'
+LAST_UPDATED_FMT = '%Y-%m-%d %H:%M'
 
 LOG = logging.getLogger(__name__)
 
