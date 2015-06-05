@@ -19,15 +19,20 @@ LOG.setLevel(logging.WARN)
 def check_current(file_name, stat, warn_days):
     """Check effective date range on feed."""
     today = datetime.today()
-    if stat['effective_from'] > today:
-        LOG.warn('Feed %s not effective until %s.', file_name, stat['effective_from'])
-        return False
-    if stat['effective_to'] < today:
-        LOG.warn('Feed %s expired %s.', file_name, stat['efective_to'])
-        return False
-    elif stat['effective_to'] <= (today + timedelta(days=warn_days)):
-        LOG.warn('Feed %s will expire %s.', file_name, stat['effective_to'])
-    LOG.info('Feed %s is currently effective.', file_name)
+    try:
+        if not stat.get('effective_from') or not stat.get('effective_to'):
+            LOG.warn('No effective date range for %s.', file_name)
+        elif stat['effective_from'] > today:
+            LOG.warn('Feed %s not effective until %s.', file_name, stat['effective_from'])
+            return False
+        elif stat['effective_to'] < today:
+            LOG.warn('Feed %s expired %s.', file_name, stat['efective_to'])
+            return False
+        elif stat['effective_to'] <= (today + timedelta(days=warn_days)):
+            LOG.warn('Feed %s will expire %s.', file_name, stat['effective_to'])
+        LOG.info('Feed %s is currently effective.', file_name)
+    except TypeError:
+        LOG.warn('No effective date range for %s.', file_name)
 
 def read_status(file_name, statuses, warn_days):
     """Read and log messages about passed status dictionary."""
