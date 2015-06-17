@@ -79,5 +79,5 @@ class California(FeedSource):
     def fetch(self):
         for filename in self.urls:
             url = self.urls.get(filename)
-            self.fetchone(filename, url):
+            self.fetchone(filename, url)
             self.write_status()

@@ -35,7 +35,7 @@ class NJTransit(FeedSource):
             if login.ok:
                 LOG.debug('Logged in to NJ TRANSIT successfully.')
                 url = self.urls.get(filename)
-                self.fetchone(filename, url, session=session):
+                self.fetchone(filename, url, session=session)
                 self.write_status()
             else:
                 LOG.error('Failed to log in to NJ TRANSIT. Response status: %s: %s.',
