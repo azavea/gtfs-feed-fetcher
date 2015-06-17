@@ -6,6 +6,7 @@ gtfs/*
 *.csv
 *.html
 patco-gtfs/
+transitfeedcrash.txt
 
 # virtualenv
 env/
