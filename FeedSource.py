@@ -90,9 +90,8 @@ class FeedSource(object):
         """
         if self.urls:
             for filename in self.urls:
-                url = self.urls.get(filename)
-                if self.fetchone(filename, url):
-                    self.write_status()
+                self.fetchone(filename, self.urls.get(filename))
+                self.write_status()
         else:
             LOG.warn('No URLs to download for %s.', self.__class__.__name__)
 
@@ -162,10 +161,17 @@ class FeedSource(object):
 
         # Process returns failure on warnings, which most feeds have;
         # we will return success here if there are only warnings and no errors.
-        out = subprocess.Popen(process_cmd, stdout=subprocess.PIPE).communicate()
+        try:
+            out = subprocess.Popen(process_cmd, stdout=subprocess.PIPE).communicate()
+        except Exception as ex:
+            LOG.error('feedvalidator.py errorred processing %s.', file_name)
+            self.set_error(file_name, 'feedvalidator.py errored processing feed')
+            return False
+
         errct = out[0].split('\n')[-2:-1][0] # output line with count of errors/warnings
         if errct.find('error') > -1:
-            LOG.error('Feed validator found errors in %s: %s.', file_name, errct)
+            LOG.error('Feed validator found errors in %s: %s. ' + ' \
+                      Check transitfeedcrash.txt for details.', file_name, errct)
         elif out[0].find('this feed is in the future,') > -1:
             # will check for this again when we get the effective dates from the HTML output
             LOG.warn('Feed validator found GTFS not in service until future for %s.', file_name)

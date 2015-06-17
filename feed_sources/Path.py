@@ -64,7 +64,6 @@ class Path(FeedSource):
             LOG.info('No previous download found for PATH.')
 
         # Download it and verify
-        url = self.urls.get(FILE_NAME)
-        if self.fetchone(FILE_NAME, url):
-            self.set_posted_date(FILE_NAME, self.last_updated.strftime(TIMECHECK_FMT))
-            self.write_status()
+        self.fetchone(FILE_NAME, self.urls.get(FILE_NAME))
+        self.set_posted_date(FILE_NAME, self.last_updated.strftime(TIMECHECK_FMT))
+        self.write_status()
