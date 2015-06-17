@@ -90,9 +90,8 @@ class FeedSource(object):
         """
         if self.urls:
             for filename in self.urls:
-                url = self.urls.get(filename)
-                if self.fetchone(filename, url):
-                    self.write_status()
+                self.fetchone(filename, self.urls.get(filename))
+                self.write_status()
         else:
             LOG.warn('No URLs to download for %s.', self.__class__.__name__)
 

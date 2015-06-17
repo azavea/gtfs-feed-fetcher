@@ -38,6 +38,5 @@ class Mta(FeedSource):
     def fetch(self):
         """MTA downloads do not stream."""
         for filename in self.urls:
-            url = self.urls.get(filename)
-            if self.fetchone(filename, url, do_stream=False):
-                self.write_status()
+            self.fetchone(filename, self.urls.get(filename), do_stream=False)
+            self.write_status()

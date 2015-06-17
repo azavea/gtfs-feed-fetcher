@@ -39,8 +39,8 @@ class Patco(FeedSource):
             else:
                 LOG.info('No previous PATCO download found. Last update posted: %s', last_updated)
 
-            if self.fetchone(FILE_NAME, download_url):
-                self.set_posted_date(FILE_NAME, last_updated.strftime(TIMECHECK_FMT))
-                self.write_status()
+            self.fetchone(FILE_NAME, download_url)
+            self.set_posted_date(FILE_NAME, last_updated.strftime(TIMECHECK_FMT))
+            self.write_status()
         else:
             LOG.error('Could not check GitHub relases page for PATCO.')
