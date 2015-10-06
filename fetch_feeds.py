@@ -5,6 +5,8 @@ import getpass
 import logging
 import sys
 
+from prettytable import PrettyTable
+
 from FeedSource import FeedSource
 import feed_sources
 # import all the available feed sources
@@ -69,18 +71,25 @@ def fetch_all(get_nj, nj_username, nj_password, sources=None):
     if statuses.has_key('last_check'):
         del statuses['last_check']
 
+    # display results
+    ptable = PrettyTable()
+
     for file_name in statuses:
         stat = statuses[file_name]
         if stat.has_key('error'):
             LOG.error('Error processing %s: %s', file_name, stat['error'])
             continue
-        msg = ''
-        msg += 'is new; ' if stat['is_new'] else 'is not new; '
-        msg += 'is valid; ' if stat['is_valid'] else 'is not valid; '
-        msg += 'is current.' if stat['is_current'] else 'is not current.'
-        msg += ' Newly effective!' if stat.get('newly_effective') else ''
+        msg = []
+        msg.append(file_name)
+        msg.append('x' if stat['is_new'] else '')
+        msg.append('x' if stat['is_valid'] else '')
+        msg.append('x' if stat['is_current'] else '')
+        msg.append('x' if stat.get('newly_effective') else '')
 
-        LOG.info('File %s %s', file_name, msg)
+        ptable.add_row(msg)
+
+    ptable.field_names = ['file', 'new?', 'valid?', 'current?', 'newly effective?']
+    LOG.info('Results:\n%s', ptable.get_string())
     LOG.info('All done!')
 
 def main():
