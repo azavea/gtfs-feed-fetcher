@@ -5,14 +5,12 @@ import logging
 import os
 import zipfile
 
-from bs4 import BeautifulSoup
 import requests
 
 from FeedSource import FeedSource, TIMECHECK_FMT
 
-DEVELOPER_URL = 'http://www2.septa.org/developer/'
-URL = DEVELOPER_URL + 'download.php'
-LAST_UPDATED_FMT = '%a, %d %b %Y %H:%M:%S'
+URL = 'https://api.github.com/repos/septadev/GTFS/releases/latest'
+LAST_UPDATED_FMT = '%Y-%m-%dT%H:%M:%SZ'
 
 # SEPTA provides two GTFS .zip files themselves zipped together
 DOWNLOAD_FILE_NAME = 'septa.zip'
@@ -34,54 +32,48 @@ class Septa(FeedSource):
 
     def fetch(self):
         """Fetch SEPTA bus and rail feeds.
-
-        First scrape the download page to see if a new feed is available,
-        since the last-modified header is not set on the download.
         """
-        page = requests.get(DEVELOPER_URL)
-        LOG.debug('Checking last SEPTA update time...')
-        last_mod = datetime.utcnow()
-        if page.ok:
-            soup = BeautifulSoup(page.text)
-            last_mod = soup.find('div', 'col_content').find('p').text
-            LOG.info('SEPTA download page: %s.', last_mod)
-            last_mod_str = last_mod[14:]  # trim out date string
-            last_mod = datetime.strptime(last_mod_str, LAST_UPDATED_FMT)  # convert to date
+        # Check GitHub latest release page to see if there is a newer download available.
+        request = requests.get(URL)
+        if request.ok:
+            response = request.json()
+            download_url = response['assets'][0]['browser_download_url']
+            last_updated_str = response['assets'][0]['updated_at']
+            last_updated = datetime.strptime(last_updated_str, LAST_UPDATED_FMT)
             stat = self.status.get(BUS_FILE)
-            posted_date = last_mod.strftime(TIMECHECK_FMT)
             if stat:
                 got_last = datetime.strptime(stat['posted_date'], TIMECHECK_FMT)
-                if got_last >= last_mod:
+                LOG.debug('SEPTA GTFS last fetched: %s, last updated: %s', got_last, last_updated)
+                if got_last >= last_updated:
                     LOG.info('No new download available for SEPTA.')
                     self.update_existing_status(BUS_FILE)
                     self.update_existing_status(RAIL_FILE)
                     return
-                else:
-                    LOG.info('New SEPTA download available.')
-                    LOG.info('Latest SEPTA download posted: %s.', last_mod)
-                    LOG.info('Previous download retrieved: %s.', got_last)
             else:
-                LOG.debug('No previous SEPTA download found.')
-        else:
-            LOG.error('failed to get SEPTA dowload info page.')
+                LOG.info('No previous SEPTA download found. Last update posted: %s', last_updated)
 
-        self.set_posted_date(BUS_FILE, posted_date)
-        self.set_posted_date(RAIL_FILE, posted_date)
+            posted_date = last_updated.strftime(TIMECHECK_FMT)
+            self.set_posted_date(BUS_FILE, posted_date)
+            self.set_posted_date(RAIL_FILE, posted_date)
 
-        if self.download(DOWNLOAD_FILE_NAME, URL, do_stream=False):
-            # remove posted date status for parent zip
-            del self.status[DOWNLOAD_FILE_NAME]
-            septa_file = os.path.join(self.ddir, DOWNLOAD_FILE_NAME)
-            if self.extract(septa_file):
+
+            if self.download(DOWNLOAD_FILE_NAME, download_url, do_stream=False):
+                # remove posted date status for parent zip
+                del self.status[DOWNLOAD_FILE_NAME]
+                septa_file = os.path.join(self.ddir, DOWNLOAD_FILE_NAME)
+                if self.extract(septa_file):
+                    self.write_status()
+                # delete download file once the two GTFS zips in it are extracted
+                os.remove(septa_file)
+            else:
+                # clear error for parent septa.zip download, and set statuses for bus and rail feeds
+                err = self.status.get(DOWNLOAD_FILE_NAME, 'Could not download file')
+                self.status = {}
+                self.set_error(BUS_FILE, err)
+                self.set_error(RAIL_FILE, err)
                 self.write_status()
-            # delete download file once the two GTFS zips in it are extracted
-            os.remove(septa_file)
         else:
-            # clear error for parent septa.zip download, and set statuses for bus and rail feeds
-            err = self.status.get(DOWNLOAD_FILE_NAME, 'Could not download file')
-            self.status = {}
-            self.set_error(BUS_FILE, err)
-            self.set_error(RAIL_FILE, err)
+            LOG.error('Could not check GitHub relases page for SEPTA.')
 
     def extract(self, file_name):
         """Extract bus and rail GTFS files from downloaded zip, then validate each."""
