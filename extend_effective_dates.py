@@ -32,7 +32,7 @@ def extend_feed(feed_path, effective_days):
     os.mkdir(tmpdir)
     try:
         with zipfile.ZipFile(feed_path, 'r') as feedzip:
-            if not 'calendar.txt' in feedzip.namelist():
+            if 'calendar.txt' not in feedzip.namelist():
                 LOG.warn('Feed %s has no calendar.txt; cannot extend effective date range.',
                          file_name)
                 return
@@ -43,7 +43,7 @@ def extend_feed(feed_path, effective_days):
         LOG.error('Could not process zip file %s.', file_name)
 
     with open(os.path.join(tmpdir, 'calendar.txt'), 'rb') as cal_file:
-        csvdict = csv.DictReader(cal_file)
+        csvdict = csv.DictReader(cal_file, skipinitialspace=True)
         fldnames = csvdict.fieldnames
         cal = [x for x in csvdict]
     # flag to track whether this feed's effective dates have actually been extended
@@ -72,6 +72,7 @@ def extend_feed(feed_path, effective_days):
     # delete tmp directory when done
     shutil.rmtree(tmpdir)
 
+
 def extend_feeds(feed_directory, effective_days):
     """Extend effective dates for all fees found in given directory.
 
@@ -89,6 +90,7 @@ def extend_feeds(feed_directory, effective_days):
                     LOG.warn('File %s does not look like a valid zip file.', feed_file)
 
     LOG.info('All done!')
+
 
 def extended_calendar(cal, effective_days):
     """Extends the effective date range for the given calendar.
@@ -117,6 +119,7 @@ def extended_calendar(cal, effective_days):
             modified = True
             entry['end_date'] = future_end.strftime(GTFS_DATE_FMT)
     return cal if modified else modified
+
 
 def main():
     """Main entry point for command line interface."""
