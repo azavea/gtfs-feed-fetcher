@@ -24,7 +24,7 @@ class Path(FeedSource):
         self.urls = {FILE_NAME: URL + 'path-nj-us.zip'}
         response = requests.get(URL)
         if response.ok:
-            soup = BeautifulSoup(response.text)
+            soup = BeautifulSoup(response.text, 'html.parser')
             anchors = soup.findAll('a')
             if len(anchors):
                 # last link on the page shoud be our download

@@ -20,7 +20,7 @@ class Paac(FeedSource):
         # Go scrape the directory listing to find out what download file name is
         response = requests.get(URL)
         if response.ok:
-            soup = BeautifulSoup(response.text)
+            soup = BeautifulSoup(response.text, 'html.parser')
             # go find the zip file link
             anchors = soup.findAll('a')
             for anchor in anchors:

@@ -170,8 +170,8 @@ class FeedSource(object):
 
         errct = out[0].split('\n')[-2:-1][0] # output line with count of errors/warnings
         if errct.find('error') > -1:
-            LOG.error('Feed validator found errors in %s: %s. ' + ' \
-                      Check transitfeedcrash.txt for details.', file_name, errct)
+            LOG.error('Feed validator found errors in %s: %s. ' +
+                      'Check transitfeedcrash.txt for details.', file_name, errct)
         elif out[0].find('this feed is in the future,') > -1:
             # will check for this again when we get the effective dates from the HTML output
             LOG.warn('Feed validator found GTFS not in service until future for %s.', file_name)
@@ -186,7 +186,7 @@ class FeedSource(object):
 
         # look at HTML validation output to find effective date range
         with open(validation_output_file, 'rb') as output:
-            soup = BeautifulSoup(output)
+            soup = BeautifulSoup(output, 'html.parser')
             effective_dates = soup.find(text='Effective:').findParent().findNextSibling().text
             LOG.debug('Feed effective %s.', effective_dates)
             if effective_dates and effective_dates.find(' to ') > -1:
