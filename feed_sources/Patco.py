@@ -6,7 +6,7 @@ import requests
 
 from FeedSource import FeedSource, TIMECHECK_FMT
 
-URL = 'https://addtransit.com/gtfs/Patco/PortAuthorityTransitCorporation.zip'
+URL = 'http://www.ridepatco.org/developers/PortAuthorityTransitCorporation.zip'
 FILE_NAME = 'patco.zip'
 
 LOG = logging.getLogger(__name__)
