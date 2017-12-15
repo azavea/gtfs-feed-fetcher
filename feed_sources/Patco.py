@@ -1,14 +1,13 @@
 """Fetch official PATCO feed."""
 
-from datetime import datetime
 import logging
 import requests
 from bs4 import BeautifulSoup
 
-from FeedSource import FeedSource, TIMECHECK_FMT
+from FeedSource import FeedSource
 
 DEVPAGE_URL = 'http://www.ridepatco.org/developers/'
-FILE_NAME = 'patco.zip'
+FILE_NAME = 'PortAuthorityTransitCorporation.zip'
 
 LOG = logging.getLogger(__name__)
 
