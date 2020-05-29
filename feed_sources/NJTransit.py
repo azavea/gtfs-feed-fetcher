@@ -13,15 +13,15 @@ from FeedSource import FeedSource
 
 LOG = logging.getLogger(__name__)
 
-LOGIN_URL = 'https://www.njtransit.com/mt/mt_servlet.srv?hdnPageAction=MTDevLoginSubmitTo'
-URL = 'https://www.njtransit.com/mt/mt_servlet.srv?hdnPageAction=MTDevResourceDownloadTo&Category='
+LOGIN_URL = 'https://www.njtransit.com/users/login'
+URL = 'https://www.njtransit.com/'
 
 
 class NJTransit(FeedSource):
     """Create session to fetch NJ TRANSIT feed bus and rail feeds."""
     def __init__(self):
         super(NJTransit, self).__init__()
-        self.urls = {'nj_rail.zip': URL + 'rail', 'nj_bus.zip': URL + 'bus'}
+        self.urls = {'nj_rail.zip': URL + 'rail_data.zip', 'nj_bus.zip': URL + 'bus_data.zip'}
         self.nj_payload = {} # need to set username and password in this to log in
 
     def fetch(self):

@@ -44,7 +44,7 @@ def fetch_all(get_nj, nj_username, nj_password, sources=None):
             mod = getattr(feed_sources, NJ_TRANSIT_CLASS)
             klass = getattr(mod, NJ_TRANSIT_CLASS)
             inst = klass()
-            inst.nj_payload = {'userName': nj_username, 'password': nj_password}
+            inst.nj_payload = {'name': nj_username, 'pass': nj_password}
             inst.fetch()
             statuses.update(inst.status)
         else:
@@ -81,10 +81,10 @@ def fetch_all(get_nj, nj_username, nj_password, sources=None):
             continue
         msg = []
         msg.append(file_name)
-        msg.append('x' if stat['is_new'] else '')
-        msg.append('x' if stat['is_valid'] else '')
-        msg.append('x' if stat['is_current'] else '')
-        msg.append('x' if stat.get('newly_effective') else '')
+        msg.append('x' if stat.has_key('is_new') and stat['is_new'] else '')
+        msg.append('x' if stat.has_key('is_valid') and stat['is_valid'] else '')
+        msg.append('x' if stat.has_key('is_current') and stat['is_current'] else '')
+        msg.append('x' if stat.has_key('newly_effective') and stat.get('newly_effective') else '')
 
         ptable.add_row(msg)
 
