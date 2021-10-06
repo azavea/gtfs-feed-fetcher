@@ -3,7 +3,7 @@ import logging
 
 from FeedSource import FeedSource
 
-URL = 'https://dartfirststate.com/information/routes/gtfs_data/dartfirststate_de_us.zip'
+URL = 'https://dartfirststate.com/RiderInfo/Routes/gtfs_data/dartfirststate_de_us.zip'
 
 LOG = logging.getLogger(__name__)
 
