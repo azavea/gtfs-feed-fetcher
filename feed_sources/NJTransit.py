@@ -6,14 +6,11 @@ an email is sent to the developer account saying new feeds are available.
 """
 import logging
 
-import requests
-
 from FeedSource import FeedSource
 
 
 LOG = logging.getLogger(__name__)
 
-LOGIN_URL = 'https://www.njtransit.com/users/login'
 URL = 'https://www.njtransit.com/'
 
 
@@ -22,7 +19,7 @@ class NJTransit(FeedSource):
     def __init__(self):
         super(NJTransit, self).__init__()
         self.urls = {'nj_rail.zip': URL + 'rail_data.zip', 'nj_bus.zip': URL + 'bus_data.zip'}
-        self.nj_payload = {} # need to set username and password in this to log in
+
 
     def fetch(self):
         """Fetch NJ TRANSIT bus and rail feeds.
@@ -30,14 +27,9 @@ class NJTransit(FeedSource):
         First logs on to create session before fetching and validating downloads.
         """
         for filename in self.urls:
-            session = requests.Session()
-            login = session.post(LOGIN_URL, data=self.nj_payload)
-            if login.ok:
-                LOG.debug('Logged in to NJ TRANSIT successfully.')
-                url = self.urls.get(filename)
-                self.fetchone(filename, url, session=session)
-                self.write_status()
-            else:
-                LOG.error('Failed to log in to NJ TRANSIT. Response status: %s: %s.',
-                          login.status_code, login.reason)
-            session.close()
+            url = self.urls.get(filename)
+            self.fetchone(filename, url)
+            self.write_status()
+
+
+
