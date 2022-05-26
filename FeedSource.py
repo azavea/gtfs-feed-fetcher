@@ -283,14 +283,13 @@ class FeedSource(object):
             LOG.debug('Time check entry for %s not found.', file_name)
             return 0
 
-    def download(self, file_name, url, do_stream=True, session=None):
+    def download(self, file_name, url, do_stream=True):
         """Download feed.
 
         :param file_name: File name to save download as, relative to :ddir:
         :param url: Where to download the GTFS from
         :param do_stream: If True, stream the download
-        :param session: If set, the open session within which to send the request
-        :returns: True if download was successful
+                :returns: True if download was successful
         """
         LOG.debug('In get_stream to get file %s from URL %s.', file_name, url)
         if self.check_header_newer(url, file_name) == -1:
@@ -298,16 +297,13 @@ class FeedSource(object):
             return False
         # file_name is local to download directory
         file_path = os.path.join(self.ddir, file_name)
-        LOG.info('Getting file %s...', file_path)
-        if not session:
-            request = requests.get(url, stream=do_stream)
-        else:
-            request = session.get(url, stream=do_stream)
+        LOG.info('Getting file %s...from...%s', file_path, url)
+        request = requests.get(url, stream=do_stream)
 
         if request.ok:
             with open(file_path, 'wb') as download_file:
                 if do_stream:
-                    for chunk in request.iter_content():
+                    for chunk in request.iter_content(chunk_size=1024):
                         download_file.write(chunk)
                 else:
                     download_file.write(request.content)

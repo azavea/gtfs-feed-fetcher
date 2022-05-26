@@ -17,40 +17,19 @@ logging.basicConfig()
 LOG = logging.getLogger()
 LOG.setLevel(logging.INFO)
 
-NJ_TRANSIT_CLASS = 'NJTransit'
-
-def fetch_all(get_nj, nj_username, nj_password, sources=None):
+def fetch_all(sources=None):
     """Fetch from all FeedSources in the feed_sources directory.
 
-    :param get_nj: If True, fetch feeds for NJ TRANSIT
-    :param nj_username: Username of NJ TRANSIT developer account (required if :get_nj: is True)
-    :param nj_password: Password to NJ TRANSIT developer account (required if :get_nj: is True)
     :param sources: List of :FeedSource: modules to fetch; if not set, will fetch all available.
     """
     statuses = {}  # collect the statuses for all the files
 
     # make a copy of the list of all modules in feed_sources;
-    # default to use all of them (excluding NJ, if not requested)
+    # default to use all of them
     if not sources:
         sources = list(feed_sources.__all__)
 
     LOG.info('Going to fetch feeds from sources: %s', sources)
-
-    # NJ TRANSIT requires some special handling; do that here
-    if NJ_TRANSIT_CLASS in sources:
-        sources.remove(NJ_TRANSIT_CLASS)
-        if get_nj:
-            LOG.debug('Going to start fetch for %s...', NJ_TRANSIT_CLASS)
-            mod = getattr(feed_sources, NJ_TRANSIT_CLASS)
-            klass = getattr(mod, NJ_TRANSIT_CLASS)
-            inst = klass()
-            inst.nj_payload = {'name': nj_username, 'pass': nj_password}
-            inst.fetch()
-            statuses.update(inst.status)
-        else:
-            LOG.info('Skipping NJ data fetch.')
-    elif get_nj:
-        LOG.warn('No NJ TRANSIT class defined! Skipping fetch.')
 
     for src in sources:
         LOG.debug('Going to start fetch for %s...', src)
@@ -95,8 +74,6 @@ def fetch_all(get_nj, nj_username, nj_password, sources=None):
 def main():
     """Main entry point for command line interface."""
     parser = argparse.ArgumentParser(description='Fetch GTFS feeds and validate them.')
-    parser.add_argument('--get-nj', action='store_true',
-                        help='Fetch NJ TRANSIT (requires username and password; default: false)')
     parser.add_argument('--feeds', '-f',
                         help='Comma-separated list of feeds to get (optional; default: all)')
     parser.add_argument('--verbose', '-v', action='count',
@@ -106,19 +83,11 @@ def main():
     if args.verbose:
         LOG.setLevel(logging.DEBUG)
 
-    # Should specify --get-nj when email received saying new download available.
-    # Prompt for username/password when --get-nj specified.
-    nj_username = ''
-    nj_password = ''
-    if args.get_nj:
-        nj_username = raw_input('NJ TRANSIT developer username: ')
-        nj_password = getpass.getpass(prompt='NJ TRANSIT developer password: ')
-
     if args.feeds:
         sources = args.feeds.split(',')
-        fetch_all(args.get_nj, nj_username, nj_password, sources=sources)
+        fetch_all(sources=sources)
     else:
-        fetch_all(args.get_nj, nj_username, nj_password)
+        fetch_all()
 
 if __name__ == '__main__':
     main()
