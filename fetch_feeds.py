@@ -55,19 +55,19 @@ def fetch_all(sources=None):
 
     for file_name in statuses:
         stat = statuses[file_name]
-        if stat.has_key('error'):
-            LOG.error('Error processing %s: %s', file_name, stat['error'])
-            continue
         msg = []
         msg.append(file_name)
         msg.append('x' if stat.has_key('is_new') and stat['is_new'] else '')
         msg.append('x' if stat.has_key('is_valid') and stat['is_valid'] else '')
         msg.append('x' if stat.has_key('is_current') and stat['is_current'] else '')
         msg.append('x' if stat.has_key('newly_effective') and stat.get('newly_effective') else '')
-
+        if stat.has_key('error'):
+             msg.append(stat['error'])
+        else:
+             msg.append('')
         ptable.add_row(msg)
 
-    ptable.field_names = ['file', 'new?', 'valid?', 'current?', 'newly effective?']
+    ptable.field_names = ['file', 'new?', 'valid?', 'current?', 'newly effective?', 'error']
     LOG.info('Results:\n%s', ptable.get_string())
     LOG.info('All done!')
 
