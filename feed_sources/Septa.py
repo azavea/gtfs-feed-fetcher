@@ -92,15 +92,14 @@ class Septa(FeedSource):
                         bus_good = True
                     else:
                         LOG.warn('SEPTA bus GTFS verification failed.')
-                        return False
                     if self.verify(RAIL_FILE):
                         rail_good = True
                     else:
                         LOG.warn('SEPTA rail GTFS verification failed.')
-                        return False
                     if rail_good and bus_good:
                         LOG.info('SEPTA bus and rail verification succeeded.')
                         return True
+                    return False
                 else:
                     LOG.error('Could not find SEPTA GTFS files with expected names.')
                     return False
